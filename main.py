@@ -22,9 +22,11 @@ Coord = pd.DataFrame(temp)
 print('Scrapping Wikki')
 response = requests.get(WikkiURL,stream=True)
 total_size = int(response.headers.get('content-length',0))
-print('Size : ',total_size,' KB')
+print('Size : ',total_size,' bytes')
 soup = BeautifulSoup(response.text,'html.parser')
-table = soup.find('table',{'class':"wikitable"}).tbody
+#wikkiedia changed its table structure so class was changed (25 March 2020)
+table = soup.find('table',{'class':"wikitable mw-collapsible mw-collapsed"}).tbody
+#table = soup.find('table',{'class':"wikitable mw-collapsible mw-made-collapsible"}).tbody
 rows = table.find_all('tr')
 column_name = [v.text.replace('\n','') for v in rows[1].find_all('th')]
 column_name.pop()
@@ -32,11 +34,15 @@ column_name.pop()
 column_name.pop()
 column_name.pop()
 column_name.insert(0,'Date')
+print(column_name)
 #creating dataframe for data about per day Confirmation in each state
 df = pd.DataFrame(columns=column_name)
 for i in range(1,len(rows)):
     tds = rows[i].find_all('td')
-    value = [tds[x].text.replace('\n','') for x in range(0,len(tds)-6)]
+#initially : value = [tds[x].text.replace('\n','') for x in range(0,len(tds)-5)] 
+#wikkipedia changed table structure so code was updated on (25 march 2020)
+    value = [tds[x].text.replace('\n','') for x in range(0,len(tds)-6)] 
+
     for y in range(len(value)):
         if '(' in value[y]:
             value[y] = value[y][:-3]
@@ -48,6 +54,7 @@ for i in range(1,len(rows)):
     if len(value) >= 23:
         df = df.append(pd.Series(value,index=column_name),ignore_index=True)
 df.to_csv('data.csv',index=False)
+print(df)
 print('waiting...')
 time.sleep(1)
 df.fillna(0,inplace=True)
@@ -74,7 +81,7 @@ def MakeGraph(data,titl):
     a = ToINT(data)
     b = CumSum(a)
     c = np.array(b)
-    plt.plot(dates,c)
+    plt.plot(dates,c,color='red')
     plt.xlabel('Date')
     plt.ylabel('Confirmed Cases')
     plt.title(titl)
@@ -82,7 +89,7 @@ def MakeGraph(data,titl):
     #plt.show()
     n = titl+'.png'
     name = os.path.join(figFile,n)
-    print('saving Images',n)
+    #print('saving Images',n)
     plt.savefig(name,bbox_inches = 'tight', pad_inches=.1,quality=40,)
     plt.close()
 
@@ -110,7 +117,7 @@ for state in All_states:
         Coord = Coord[Coord.states != state]
 
 #creating map
-m = folium.Map(tiles='Stamen Terrain',zoom_start=5,location=[23.7957, 86.4304],min_zoom=4,max_zoom=7,min_lat=0,max_lat=40,min_lon=70,max_lon=100)
+m = folium.Map(tiles='OpenStreetMap',zoom_start=5,location=[23.7957, 86.4304],min_zoom=4,max_zoom=7,min_lat=0,max_lat=40,min_lon=70,max_lon=100)
 
 for (index,row) in Coord.iterrows():
     name = row.loc['states']
